@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Cosine Wave Generation Motion</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f2f5; font-family: sans-serif; }
+        canvas { background-color: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .controls { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .back-btn { position: absolute; top: 20px; right: 20px; padding: 7px 16px; background: rgba(255,255,255,0.85); border: none; border-radius: 8px; font-size: 13px; cursor: pointer; color: #333; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+        .controls-row { display: flex; gap: 10px; align-items: center; }
+        .btn { padding: 8px 16px; border: 2px solid #e67e22; background: white; color: #e67e22; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; }
+        .btn.active { background: #e67e22; color: white; }
+        .speed-label { font-size: 13px; color: #555; margin-right: 2px; }
+        .btn-speed { padding: 6px 14px; border: 2px solid #888; background: white; color: #555; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; }
+        .btn-speed.active { background: #555; color: white; }
+    </style>
+</head>
+<body>
+
+<a class="back-btn" href="index.html">← 메인으로</a>
+<div class="controls">
+    <div class="controls-row">
+        <button class="btn active" id="btn2pi" onclick="setMode('2pi')">y = cos x &nbsp;(0 &lt; x &lt; 2π)</button>
+        <button class="btn" id="btn6pi" onclick="setMode('6pi')">y = cos x &nbsp;(0 &lt; x &lt; 6π)</button>
+    </div>
+    <div class="controls-row">
+        <span class="speed-label">속도:</span>
+        <button class="btn-speed active" id="btn1x" onclick="setSpeed(1)">1배속</button>
+        <button class="btn-speed" id="btn2x" onclick="setSpeed(2)">2배속</button>
+    </div>
+</div>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let mode = '2pi';
+let angle = 0;
+let points = [];
+let paused = false;
+let animId = null;
+let speedMultiplier = 1;
+let waiting = false;
+let waitTimeout = null;
+let isDragging = false;
+
+// ── 마우스 유틸 ───────────────────────────────────────────
+function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left) * (canvas.width  / rect.width),
+        y: (e.clientY - rect.top)  * (canvas.height / rect.height)
+    };
+}
+function isNearCircle(pos, cfg) {
+    const { circleCenter, radius } = cfg;
+    const dx = pos.x - circleCenter.x, dy = pos.y - circleCenter.y;
+    return Math.sqrt(dx*dx + dy*dy) <= radius + 24;
+}
+function setAngleFromMouse(pos, cfg) {
+    const { circleCenter, maxAngle } = cfg;
+    const dx = pos.x - circleCenter.x, dy = pos.y - circleCenter.y;
+    let raw = -Math.atan2(dy, dx);
+    const k = Math.round((angle - raw) / (Math.PI * 2));
+    let a = raw + k * Math.PI * 2;
+    a = Math.max(0, Math.min(maxAngle, a));
+    angle = a;
+    points = buildPoints(cfg, angle);
+}
+function buildPoints(cfg, toAngle) {
+    const { radius, circleCenter, graphOrigin } = cfg;
+    const pts = [];
+    const step = 0.02;
+    for (let a = 0; a <= toAngle + 1e-9; a += step) {
+        const a2 = Math.min(a, toAngle);
+        const px_a = circleCenter.x + radius * Math.cos(-a2);
+        pts.push({ x: graphOrigin.x + a2 * radius,
+                   y: graphOrigin.y - (px_a - circleCenter.x) });
+    }
+    return pts;
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    const pos = getCanvasPos(e);
+    if (isNearCircle(pos, getConfig())) {
+        isDragging = true;
+        if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
+        waiting = false;
+        paused = true;
+        setAngleFromMouse(pos, getConfig());
+        draw();
+    }
+});
+canvas.addEventListener('mousemove', (e) => {
+    const pos = getCanvasPos(e);
+    canvas.style.cursor = isNearCircle(pos, getConfig()) ? 'grab' : 'default';
+    if (!isDragging) return;
+    canvas.style.cursor = 'grabbing';
+    setAngleFromMouse(pos, getConfig());
+    draw();
+});
+canvas.addEventListener('mouseup', (e) => {
+    if (!isDragging) {
+        paused = !paused;
+        if (!paused) draw();
+    }
+    isDragging = false;
+});
+canvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+    canvas.style.cursor = 'default';
+});
+
+function setSpeed(mult) {
+    speedMultiplier = mult;
+    document.getElementById('btn1x').classList.toggle('active', mult === 1);
+    document.getElementById('btn2x').classList.toggle('active', mult === 2);
+}
+
+function getConfig() {
+    if (mode === '2pi') {
+        return {
+            canvasWidth: 1400,
+            canvasHeight: 640,
+            radius: 115,
+            circleCenter: { x: 240, y: 320 },
+            graphOrigin:  { x: 530, y: 320 },
+            maxAngle: Math.PI * 2,
+            speed: 0.02
+        };
+    } else {
+        return {
+            canvasWidth: 1400,
+            canvasHeight: 700,
+            radius: 65,
+            circleCenter: { x: 700, y: 165 },
+            graphOrigin:  { x: 60,  y: 520 },
+            maxAngle: Math.PI * 6,
+            speed: 0.02
+        };
+    }
+}
+
+function setMode(m) {
+    mode = m;
+    angle = 0;
+    points = [];
+    paused = false;
+    waiting = false;
+    if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
+    document.getElementById('btn2pi').classList.toggle('active', m === '2pi');
+    document.getElementById('btn6pi').classList.toggle('active', m === '6pi');
+    const cfg = getConfig();
+    canvas.width = cfg.canvasWidth;
+    canvas.height = cfg.canvasHeight;
+    if (animId) cancelAnimationFrame(animId);
+    draw();
+}
+
+function drawAxes(cfg) {
+    const { radius, circleCenter, graphOrigin, maxAngle } = cfg;
+    const graphWidth = maxAngle * radius;
+
+    ctx.lineWidth = 1;
+
+    // 원 중심축
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x - radius - 20, circleCenter.y);
+    ctx.lineTo(circleCenter.x + radius + 20, circleCenter.y);
+    ctx.moveTo(circleCenter.x, circleCenter.y - radius - 20);
+    ctx.lineTo(circleCenter.x, circleCenter.y + radius + 20);
+    ctx.stroke();
+
+    // 그래프 x축, y축 (검은색)
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius - 20);
+    ctx.lineTo(graphOrigin.x, graphOrigin.y + radius + 20);
+    ctx.stroke();
+
+    // y=1, y=-1 점선
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = 'rgba(150, 150, 150, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y - radius);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + radius);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y + radius);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // y축 레이블 (1, -1)
+    ctx.fillStyle = '#333';
+    ctx.font = '26px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('1',  graphOrigin.x - 10, graphOrigin.y - radius + 8);
+    ctx.fillText('-1', graphOrigin.x - 10, graphOrigin.y + radius + 8);
+
+    // 원점 레이블 (0)
+    ctx.fillText('0', graphOrigin.x - 10, graphOrigin.y + 34);
+
+    // 단위원 x축, y축 레이블
+    ctx.textAlign = 'left';
+    ctx.fillText('1',  circleCenter.x + radius + 6, circleCenter.y + 9);   // x축 오른쪽
+    ctx.textAlign = 'right';
+    ctx.fillText('-1', circleCenter.x - radius - 4, circleCenter.y + 9);   // x축 왼쪽
+    ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius + 9);   // y축 위
+    ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 9);   // y축 아래
+
+    // x축 눈금 및 레이블 (π 단위)
+    const cycles = Math.round(maxAngle / Math.PI);
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= cycles; i++) {
+        const xMark = graphOrigin.x + i * Math.PI * radius;
+        ctx.beginPath();
+        ctx.moveTo(xMark, graphOrigin.y - 6);
+        ctx.lineTo(xMark, graphOrigin.y + 6);
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#333';
+        const label = i === 1 ? 'π' : i + 'π';
+        ctx.fillText(label, xMark, graphOrigin.y + 34);
+    }
+}
+
+function draw() {
+    if (paused && !isDragging) return;
+    const cfg = getConfig();
+    const { radius, circleCenter, graphOrigin, maxAngle, speed } = cfg;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawAxes(cfg);
+
+    // 단위원
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(circleCenter.x, circleCenter.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 회전점 계산
+    const px = circleCenter.x + radius * Math.cos(-angle);
+    const py = circleCenter.y + radius * Math.sin(-angle);
+
+    // 반지름 선
+    ctx.strokeStyle = '#e67e22';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x, circleCenter.y);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+
+    // 원 위의 점
+    ctx.fillStyle = '#e67e22';
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // x축 위 투영점 (코사인의 x좌표 시각화)
+    ctx.strokeStyle = 'rgba(230, 126, 34, 0.4)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x, circleCenter.y);
+    ctx.lineTo(px, circleCenter.y); // x축에 투영
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 투영점 표시
+    ctx.fillStyle = '#e67e22';
+    ctx.beginPath();
+    ctx.arc(px, circleCenter.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 그래프 좌표
+    // cos(angle) = (px - circleCenter.x) / radius
+    // gy = graphOrigin.y - radius * cos(angle) = graphOrigin.y - (px - circleCenter.x)
+    const gx = graphOrigin.x + angle * radius;
+    const gy = graphOrigin.y - (px - circleCenter.x);
+
+    points.push({ x: gx, y: gy });
+
+    // 연결선: 투영점 → 그래프 점 (코사인의 x좌표가 그래프 y값이 됨을 시각화)
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = 'rgba(230, 126, 34, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, circleCenter.y); // x축 투영점
+    ctx.lineTo(gx, gy);            // 그래프 위의 점
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 코사인 곡선
+    ctx.strokeStyle = '#e67e22';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // 펼쳐지는 선 (호의 길이)
+    ctx.strokeStyle = '#2ed573';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + 2);
+    ctx.lineTo(gx, graphOrigin.y + 2);
+    ctx.stroke();
+
+    // 그래프 위의 현재 점
+    ctx.fillStyle = '#e67e22';
+    ctx.beginPath();
+    ctx.arc(gx, gy, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!isDragging) {
+        if (!waiting) angle += speed * speedMultiplier;
+        if (angle > maxAngle && !waiting) {
+            waiting = true;
+            angle = maxAngle;
+            waitTimeout = setTimeout(() => {
+                angle = 0;
+                points = [];
+                waiting = false;
+                waitTimeout = null;
+            }, 1000);
+        }
+        animId = requestAnimationFrame(draw);
+    }
+}
+
+// 초기 캔버스 크기 설정 후 실행
+const initCfg = getConfig();
+canvas.width = initCfg.canvasWidth;
+canvas.height = initCfg.canvasHeight;
+draw();
+</script>
+</body>
+</html>

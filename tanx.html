@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Tangent Wave Generation Motion</title>
+    <style>
+        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f0f2f5; font-family: sans-serif; }
+        canvas { background-color: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); cursor: pointer; display: block; }
+        .controls { position: absolute; top: 20px; left: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .controls-row { display: flex; gap: 10px; align-items: center; }
+        .btn { padding: 6px 13px; border: 2px solid #2ecc71; background: white; color: #2ecc71; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: sans-serif; }
+        .btn.active { background: #2ecc71; color: white; }
+        .speed-label { font-size: 13px; color: #555; }
+        .btn-speed { padding: 5px 12px; border: 2px solid #888; background: white; color: #555; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; }
+        .btn-speed.active { background: #555; color: white; }
+        .back-btn { position: absolute; top: 20px; right: 20px; padding: 7px 16px; background: rgba(255,255,255,0.85); border: none; border-radius: 8px; font-size: 13px; cursor: pointer; color: #333; text-decoration: none; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    </style>
+</head>
+<body>
+
+<a class="back-btn" href="index.html">← 메인으로</a>
+<div class="controls">
+    <div class="controls-row">
+        <button class="btn active" id="btn2pi" onclick="setMode('2pi')">y = tan x &nbsp;(0 &lt; x &lt; 2π)</button>
+        <button class="btn"        id="btn6pi" onclick="setMode('6pi')">y = tan x &nbsp;(-π &lt; x &lt; 6π)</button>
+    </div>
+    <div class="controls-row">
+        <span class="speed-label">속도:</span>
+        <button class="btn-speed active" id="btn1x" onclick="setSpeed(1)">1배속</button>
+        <button class="btn-speed"        id="btn2x" onclick="setSpeed(2)">2배속</button>
+    </div>
+</div>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let mode = '2pi';
+let angle = 0;           // getConfig() 후 startAngle로 초기화
+let points = [];         // { x, y, isBreak }
+let paused = false;
+let animId = null;
+let speedMultiplier = 1;
+let waiting = false;
+let waitTimeout = null;
+let isDragging = false;
+
+// ── 마우스 유틸 ───────────────────────────────────────────
+function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left) * (canvas.width  / rect.width),
+        y: (e.clientY - rect.top)  * (canvas.height / rect.height)
+    };
+}
+function isNearCircle(pos, cfg) {
+    const { circleCenter, radius } = cfg;
+    const dx = pos.x - circleCenter.x, dy = pos.y - circleCenter.y;
+    return Math.sqrt(dx*dx + dy*dy) <= radius + 24;
+}
+function setAngleFromMouse(pos, cfg) {
+    const { circleCenter, startAngle, maxAngle } = cfg;
+    const dx = pos.x - circleCenter.x, dy = pos.y - circleCenter.y;
+    let raw = -Math.atan2(dy, dx);
+    const k = Math.round((angle - raw) / (Math.PI * 2));
+    let a = raw + k * Math.PI * 2;
+    a = Math.max(startAngle, Math.min(maxAngle, a));
+    angle = a;
+    points = buildPoints(cfg, angle);
+}
+function buildPoints(cfg, toAngle) {
+    const { radius, circleCenter, graphOrigin, startAngle, clampVal } = cfg;
+    const pts = [];
+    const step = 0.02;
+    for (let a = startAngle; a <= toAngle + 1e-9; a += step) {
+        const a2 = Math.min(a, toAngle);
+        const tanVal = Math.tan(a2);
+        const isBreak = Math.abs(tanVal) > clampVal;
+        const gx = graphOrigin.x + (a2 - startAngle) * radius;
+        const gy = graphOrigin.y - radius * tanVal;
+        pts.push({ x: gx, y: gy, isBreak });
+    }
+    return pts;
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    const pos = getCanvasPos(e);
+    if (isNearCircle(pos, getConfig())) {
+        isDragging = true;
+        if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
+        waiting = false;
+        paused = true;
+        setAngleFromMouse(pos, getConfig());
+        draw();
+    }
+});
+canvas.addEventListener('mousemove', (e) => {
+    const pos = getCanvasPos(e);
+    canvas.style.cursor = isNearCircle(pos, getConfig()) ? 'grab' : 'default';
+    if (!isDragging) return;
+    canvas.style.cursor = 'grabbing';
+    setAngleFromMouse(pos, getConfig());
+    draw();
+});
+canvas.addEventListener('mouseup', (e) => {
+    if (!isDragging) {
+        paused = !paused;
+        if (!paused) draw();
+    }
+    isDragging = false;
+});
+canvas.addEventListener('mouseleave', () => {
+    isDragging = false;
+    canvas.style.cursor = 'default';
+});
+
+function setSpeed(mult) {
+    speedMultiplier = mult;
+    document.getElementById('btn1x').classList.toggle('active', mult === 1);
+    document.getElementById('btn2x').classList.toggle('active', mult === 2);
+}
+
+// ── 설정 ──────────────────────────────────────────────────
+function getConfig() {
+    if (mode === '2pi') {
+        // 0 ~ 2π : 범위 2π
+        return {
+            canvasWidth: 1400, canvasHeight: 680,
+            radius: 110,
+            circleCenter: { x: 230, y: 340 },
+            graphOrigin:  { x: 510, y: 340 },
+            startAngle: 0,
+            maxAngle:    Math.PI * 2,
+            speed: 0.02,
+            clampVal: 3.0
+        };
+    } else {
+        // -π ~ 6π : 범위 7π
+        return {
+            canvasWidth: 1400, canvasHeight: 720,
+            radius: 55,
+            circleCenter: { x: 700, y: 155 },
+            graphOrigin:  { x: 60,  y: 530 },
+            startAngle: -Math.PI,
+            maxAngle:    Math.PI * 6,
+            speed: 0.02,
+            clampVal: 2.5
+        };
+    }
+}
+
+function setMode(m) {
+    mode = m;
+    const cfg = getConfig();
+    angle = cfg.startAngle;
+    points = [];
+    paused = false;
+    waiting = false;
+    if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
+    document.getElementById('btn2pi').classList.toggle('active', m === '2pi');
+    document.getElementById('btn6pi').classList.toggle('active', m === '6pi');
+    canvas.width  = cfg.canvasWidth;
+    canvas.height = cfg.canvasHeight;
+    if (animId) cancelAnimationFrame(animId);
+    draw();
+}
+
+// ── 축 그리기 ─────────────────────────────────────────────
+function drawAxes(cfg) {
+    const { radius, circleCenter, graphOrigin, startAngle, maxAngle, clampVal } = cfg;
+    const graphWidth = (maxAngle - startAngle) * radius;
+    const clampH = radius * clampVal;
+
+    ctx.lineWidth = 1;
+
+    // 원 중심축
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x - radius - 20, circleCenter.y);
+    ctx.lineTo(circleCenter.x + radius + 20, circleCenter.y);
+    ctx.moveTo(circleCenter.x, circleCenter.y - radius - 20);
+    ctx.lineTo(circleCenter.x, circleCenter.y + radius + 20);
+    ctx.stroke();
+
+    // 그래프 x축, y축 (검은색)
+    const yAxisX = graphOrigin.x + (0 - startAngle) * radius;
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y);
+    ctx.lineTo(graphOrigin.x + graphWidth + 20, graphOrigin.y);
+    ctx.moveTo(yAxisX, graphOrigin.y - clampH - 15);
+    ctx.lineTo(yAxisX, graphOrigin.y + clampH + 15);
+    ctx.stroke();
+
+    // y=1, y=-1 참조 점선
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = 'rgba(150,150,150,0.55)';
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius);
+    ctx.lineTo(graphOrigin.x + graphWidth + 20, graphOrigin.y - radius);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + radius);
+    ctx.lineTo(graphOrigin.x + graphWidth + 20, graphOrigin.y + radius);
+    ctx.stroke();
+
+    // 점근선: (2k-1)*π/2 in [startAngle, maxAngle]
+    // 즉 k = …, -1, 0, 1, 2, 3, … → -(3π/2), -(π/2), π/2, 3π/2, …
+    ctx.strokeStyle = 'rgba(220, 80, 80, 0.35)';
+    const kMin = Math.ceil((startAngle / Math.PI + 0.5) / 1);  // 범위 안 최소 홀수 반π 인덱스
+    for (let k = -10; k <= 20; k++) {
+        const asymAngle = (2 * k - 1) * Math.PI / 2;
+        if (asymAngle <= startAngle - 0.01 || asymAngle >= maxAngle + 0.01) continue;
+        const ax = graphOrigin.x + (asymAngle - startAngle) * radius;
+        ctx.beginPath();
+        ctx.moveTo(ax, graphOrigin.y - clampH - 15);
+        ctx.lineTo(ax, graphOrigin.y + clampH + 15);
+        ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // y축 레이블 (0, 1, -1) - y축 왼쪽에 우정렬
+    ctx.fillStyle = '#333';
+    ctx.font = '24px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('1',  yAxisX - 10, graphOrigin.y - radius + 8);
+    ctx.fillText('-1', yAxisX - 10, graphOrigin.y + radius + 8);
+    ctx.fillText('0',  yAxisX - 10, graphOrigin.y + 32);
+
+    // 단위원 x축, y축 레이블
+    ctx.textAlign = 'left';
+    ctx.fillText('1',  circleCenter.x + radius + 6, circleCenter.y + 8);   // x축 오른쪽
+    ctx.textAlign = 'right';
+    ctx.fillText('-1', circleCenter.x - radius - 4, circleCenter.y + 8);   // x축 왼쪽
+    ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius + 8);   // y축 위
+    ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 8);   // y축 아래
+
+    // x축 눈금 & 레이블 (π 단위, startAngle부터 maxAngle까지)
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    const iMin = Math.ceil(startAngle / Math.PI);
+    const iMax = Math.floor(maxAngle / Math.PI);
+    for (let i = iMin; i <= iMax; i++) {
+        if (i === 0) continue; // 0은 y축 레이블로 표시
+        const xMark = graphOrigin.x + (i * Math.PI - startAngle) * radius;
+        ctx.beginPath();
+        ctx.moveTo(xMark, graphOrigin.y - 6);
+        ctx.lineTo(xMark, graphOrigin.y + 6);
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#333';
+        let label;
+        if (i === 1)       label = 'π';
+        else if (i === -1) label = '-π';
+        else               label = i + 'π';
+        ctx.fillText(label, xMark, graphOrigin.y + 32);
+    }
+}
+
+// ── 메인 드로우 ───────────────────────────────────────────
+function draw() {
+    if (paused && !isDragging) return;
+
+    const cfg = getConfig();
+    const { radius, circleCenter, graphOrigin, startAngle, maxAngle, speed, clampVal } = cfg;
+    const clampH = radius * clampVal;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawAxes(cfg);
+
+    // 단위원
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(circleCenter.x, circleCenter.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 회전점
+    const px = circleCenter.x + radius * Math.cos(-angle);
+    const py = circleCenter.y + radius * Math.sin(-angle);
+    const tanVal = Math.tan(angle);
+    const isNearAsymptote = Math.abs(tanVal) > clampVal;
+
+    // 탄젠트 라인 (원의 오른쪽 끝 수직선)
+    const tanLineX = circleCenter.x + radius;
+    const tpY = circleCenter.y - radius * tanVal;
+
+    ctx.strokeStyle = 'rgba(46, 204, 113, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(tanLineX, circleCenter.y - clampH - 15);
+    ctx.lineTo(tanLineX, circleCenter.y + clampH + 15);
+    ctx.stroke();
+
+    // 반지름 선
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x, circleCenter.y);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+
+    // 원 위의 점
+    ctx.fillStyle = '#2ecc71';
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 그래프 좌표 (startAngle 기준 오프셋)
+    const gx = graphOrigin.x + (angle - startAngle) * radius;
+    const gy = graphOrigin.y - radius * tanVal;
+
+    if (!isNearAsymptote) {
+        // 연장선: 원 위 점 → 탄젠트 라인 교점
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(tanLineX, tpY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 교점 (tan 값의 핵심 포인트)
+        ctx.fillStyle = '#27ae60';
+        ctx.beginPath();
+        ctx.arc(tanLineX, tpY, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 교점 → 그래프 점 연결선
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(46, 204, 113, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(tanLineX, tpY);
+        ctx.lineTo(gx, gy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        points.push({ x: gx, y: gy, isBreak: false });
+    } else {
+        points.push({ x: gx, y: gy, isBreak: true });
+    }
+
+    // 탄젠트 곡선
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    let pathStarted = false;
+    for (const p of points) {
+        if (p.isBreak) { pathStarted = false; continue; }
+        const clampedY = Math.max(graphOrigin.y - clampH, Math.min(graphOrigin.y + clampH, p.y));
+        if (!pathStarted) { ctx.moveTo(p.x, clampedY); pathStarted = true; }
+        else ctx.lineTo(p.x, clampedY);
+    }
+    ctx.stroke();
+
+    // 현재 점
+    if (!isNearAsymptote) {
+        const clampedGy = Math.max(graphOrigin.y - clampH, Math.min(graphOrigin.y + clampH, gy));
+        ctx.fillStyle = '#2ecc71';
+        ctx.beginPath();
+        ctx.arc(gx, clampedGy, 5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 애니메이션 제어
+    if (!isDragging) {
+        if (!waiting) angle += speed * speedMultiplier;
+        if (angle > maxAngle && !waiting) {
+            waiting = true;
+            angle = maxAngle;
+            waitTimeout = setTimeout(() => {
+                angle = startAngle;   // -π 로 리셋
+                points = [];
+                waiting = false;
+                waitTimeout = null;
+            }, 1000);
+        }
+        animId = requestAnimationFrame(draw);
+    }
+}
+
+// 초기화
+const initCfg = getConfig();
+canvas.width  = initCfg.canvasWidth;
+canvas.height = initCfg.canvasHeight;
+angle = initCfg.startAngle;   // -π 에서 시작
+draw();
+</script>
+</body>
+</html>

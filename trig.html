@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>삼각함수 애니메이션</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 30px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            background-color: #f0f2f5;
+            font-family: sans-serif;
+        }
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .section-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+            min-width: 80px;
+        }
+        .controls-row { display: flex; gap: 8px; align-items: center; }
+        .speed-label { font-size: 12px; color: #555; }
+
+        canvas {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            cursor: pointer;
+            display: block;
+        }
+
+        /* 사인 버튼 */
+        .btn-sin {
+            padding: 6px 13px;
+            border: 2px solid #1e90ff;
+            background: white;
+            color: #1e90ff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+        .btn-sin.active { background: #1e90ff; color: white; }
+
+        /* 코사인 버튼 */
+        .btn-cos {
+            padding: 6px 13px;
+            border: 2px solid #e67e22;
+            background: white;
+            color: #e67e22;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+        .btn-cos.active { background: #e67e22; color: white; }
+
+        /* 공통 속도 버튼 */
+        .btn-speed {
+            padding: 5px 12px;
+            border: 2px solid #888;
+            background: white;
+            color: #555;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+        .btn-speed.active { background: #555; color: white; }
+
+        .divider {
+            width: 1000px;
+            height: 1px;
+            background: #ddd;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 사인함수 섹션 -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-title">y = sin x</span>
+        <div class="controls-row">
+            <button class="btn-sin active" id="sin-btn2pi" onclick="setMode('sin','2pi')">0 &lt; x &lt; 2π</button>
+            <button class="btn-sin" id="sin-btn6pi" onclick="setMode('sin','6pi')">0 &lt; x &lt; 6π</button>
+        </div>
+        <div class="controls-row">
+            <span class="speed-label">속도:</span>
+            <button class="btn-speed active" id="sin-btn1x" onclick="setSpeed('sin',1)">1배속</button>
+            <button class="btn-speed" id="sin-btn2x" onclick="setSpeed('sin',2)">2배속</button>
+        </div>
+    </div>
+    <canvas id="sinCanvas"></canvas>
+</div>
+
+<div class="divider"></div>
+
+<!-- 코사인함수 섹션 -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-title">y = cos x</span>
+        <div class="controls-row">
+            <button class="btn-cos active" id="cos-btn2pi" onclick="setMode('cos','2pi')">0 &lt; x &lt; 2π</button>
+            <button class="btn-cos" id="cos-btn6pi" onclick="setMode('cos','6pi')">0 &lt; x &lt; 6π</button>
+        </div>
+        <div class="controls-row">
+            <span class="speed-label">속도:</span>
+            <button class="btn-speed active" id="cos-btn1x" onclick="setSpeed('cos',1)">1배속</button>
+            <button class="btn-speed" id="cos-btn2x" onclick="setSpeed('cos',2)">2배속</button>
+        </div>
+    </div>
+    <canvas id="cosCanvas"></canvas>
+</div>
+
+<script>
+// ── 상태 관리 ──────────────────────────────────────────────
+const state = {
+    sin: { mode: '2pi', angle: 0, points: [], paused: false, animId: null, speedMult: 1 },
+    cos: { mode: '2pi', angle: 0, points: [], paused: false, animId: null, speedMult: 1 }
+};
+
+const canvases = {
+    sin: document.getElementById('sinCanvas'),
+    cos: document.getElementById('cosCanvas')
+};
+const contexts = {
+    sin: canvases.sin.getContext('2d'),
+    cos: canvases.cos.getContext('2d')
+};
+
+canvases.sin.addEventListener('click', () => togglePause('sin'));
+canvases.cos.addEventListener('click', () => togglePause('cos'));
+
+// ── 컨트롤 함수 ───────────────────────────────────────────
+function togglePause(fn) {
+    const s = state[fn];
+    s.paused = !s.paused;
+    if (!s.paused) draw(fn);
+}
+
+function setMode(fn, m) {
+    const s = state[fn];
+    s.mode = m;
+    s.angle = 0;
+    s.points = [];
+    s.paused = false;
+    document.getElementById(`${fn}-btn2pi`).classList.toggle('active', m === '2pi');
+    document.getElementById(`${fn}-btn6pi`).classList.toggle('active', m === '6pi');
+    const cfg = getConfig(m);
+    canvases[fn].width  = cfg.canvasWidth;
+    canvases[fn].height = cfg.canvasHeight;
+    if (s.animId) cancelAnimationFrame(s.animId);
+    draw(fn);
+}
+
+function setSpeed(fn, mult) {
+    state[fn].speedMult = mult;
+    document.getElementById(`${fn}-btn1x`).classList.toggle('active', mult === 1);
+    document.getElementById(`${fn}-btn2x`).classList.toggle('active', mult === 2);
+}
+
+// ── 설정 ──────────────────────────────────────────────────
+function getConfig(mode) {
+    if (mode === '2pi') {
+        return {
+            canvasWidth: 1000, canvasHeight: 400,
+            radius: 75,
+            circleCenter: { x: 185, y: 200 },
+            graphOrigin:  { x: 370, y: 200 },
+            maxAngle: Math.PI * 2,
+            speed: 0.02
+        };
+    } else {
+        return {
+            canvasWidth: 1000, canvasHeight: 440,
+            radius: 48,
+            circleCenter: { x: 500, y: 115 },
+            graphOrigin:  { x: 45,  y: 348 },
+            maxAngle: Math.PI * 6,
+            speed: 0.02
+        };
+    }
+}
+
+// ── 축 그리기 ─────────────────────────────────────────────
+function drawAxes(ctx, cfg) {
+    const { radius, circleCenter, graphOrigin, maxAngle } = cfg;
+    const graphWidth = maxAngle * radius;
+
+    ctx.lineWidth = 1;
+
+    // 원 중심축 + 그래프 축
+    ctx.strokeStyle = '#ccc';
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x - radius - 20, circleCenter.y);
+    ctx.lineTo(circleCenter.x + radius + 20, circleCenter.y);
+    ctx.moveTo(circleCenter.x, circleCenter.y - radius - 20);
+    ctx.lineTo(circleCenter.x, circleCenter.y + radius + 20);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius - 20);
+    ctx.lineTo(graphOrigin.x, graphOrigin.y + radius + 20);
+    ctx.stroke();
+
+    // y=1, y=-1 점선
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = 'rgba(150,150,150,0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y - radius);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + radius);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y + radius);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // y축 레이블
+    ctx.fillStyle = '#555';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('1',  graphOrigin.x - 6, graphOrigin.y - radius + 4);
+    ctx.fillText('-1', graphOrigin.x - 6, graphOrigin.y + radius + 4);
+
+    // x축 눈금 & 레이블
+    const cycles = Math.round(maxAngle / Math.PI);
+    ctx.strokeStyle = '#aaa';
+    for (let i = 1; i <= cycles; i++) {
+        const xMark = graphOrigin.x + i * Math.PI * radius;
+        ctx.beginPath();
+        ctx.moveTo(xMark, graphOrigin.y - 5);
+        ctx.lineTo(xMark, graphOrigin.y + 5);
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#555';
+        ctx.fillText(i === 1 ? 'π' : i + 'π', xMark, graphOrigin.y + 17);
+    }
+}
+
+// ── 메인 드로우 ───────────────────────────────────────────
+function draw(fn) {
+    const s = state[fn];
+    if (s.paused) return;
+
+    const cfg = getConfig(s.mode);
+    const { radius, circleCenter, graphOrigin, maxAngle, speed } = cfg;
+    const ctx = contexts[fn];
+
+    ctx.clearRect(0, 0, canvases[fn].width, canvases[fn].height);
+    drawAxes(ctx, cfg);
+
+    // 단위원
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(circleCenter.x, circleCenter.y, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 회전점 계산
+    const px = circleCenter.x + radius * Math.cos(-s.angle);
+    const py = circleCenter.y + radius * Math.sin(-s.angle);
+
+    const dotColor   = fn === 'sin' ? '#ff4757' : '#e67e22';
+    const curveColor = fn === 'sin' ? '#1e90ff' : '#e67e22';
+
+    // 반지름 선
+    ctx.strokeStyle = dotColor;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(circleCenter.x, circleCenter.y);
+    ctx.lineTo(px, py);
+    ctx.stroke();
+
+    // 원 위의 점
+    ctx.fillStyle = dotColor;
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    const gx = graphOrigin.x + s.angle * radius;
+    let gy;
+
+    if (fn === 'sin') {
+        // y좌표 → 그래프
+        gy = graphOrigin.y + (py - circleCenter.y);
+
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(255,71,87,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(gx, gy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+    } else {
+        // x좌표 → 그래프
+        gy = graphOrigin.y - (px - circleCenter.x);
+
+        // x축 투영선
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = 'rgba(230,126,34,0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(circleCenter.x, circleCenter.y);
+        ctx.lineTo(px, circleCenter.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 투영점
+        ctx.fillStyle = dotColor;
+        ctx.beginPath();
+        ctx.arc(px, circleCenter.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 투영점 → 그래프 연결선
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(230,126,34,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(px, circleCenter.y);
+        ctx.lineTo(gx, gy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    s.points.push({ x: gx, y: gy });
+
+    // 곡선
+    ctx.strokeStyle = curveColor;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    s.points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // 펼쳐지는 선 (호의 길이)
+    ctx.strokeStyle = '#2ed573';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + 2);
+    ctx.lineTo(gx, graphOrigin.y + 2);
+    ctx.stroke();
+
+    // 그래프 위 현재 점
+    ctx.fillStyle = dotColor;
+    ctx.beginPath();
+    ctx.arc(gx, gy, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    s.angle += speed * s.speedMult;
+    if (s.angle > maxAngle) {
+        s.angle = 0;
+        s.points = [];
+    }
+
+    s.animId = requestAnimationFrame(() => draw(fn));
+}
+
+// ── 초기화 ────────────────────────────────────────────────
+['sin', 'cos'].forEach(fn => {
+    const cfg = getConfig('2pi');
+    canvases[fn].width  = cfg.canvasWidth;
+    canvases[fn].height = cfg.canvasHeight;
+    draw(fn);
+});
+</script>
+</body>
+</html>
