@@ -233,8 +233,17 @@ function drawAxes(cfg) {
     }
 }
 
+function drawPauseHint() {
+    if (!paused || isDragging) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('▶  클릭하여 시작', canvas.width / 2, canvas.height - 24);
+    ctx.restore();
+}
+
 function draw() {
-    if (paused && !isDragging) return;
     const cfg = getConfig();
     const { radius, circleCenter, graphOrigin, maxAngle, speed } = cfg;
 
@@ -308,7 +317,9 @@ function draw() {
     ctx.arc(gx, gy, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    if (!isDragging) {
+    drawPauseHint();
+
+    if (!isDragging && !paused) {
         if (!waiting) angle += speed * speedMultiplier;
         if (angle > maxAngle && !waiting) {
             waiting = true;
