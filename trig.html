@@ -29,7 +29,7 @@
             font-size: 15px;
             font-weight: bold;
             color: #333;
-            min-width: 80px;
+            min-width: 120px;
         }
         .controls-row { display: flex; gap: 8px; align-items: center; }
         .speed-label { font-size: 12px; color: #555; }
@@ -42,7 +42,7 @@
             display: block;
         }
 
-        /* 사인 버튼 */
+        /* 사인 범위 버튼 */
         .btn-sin {
             padding: 6px 13px;
             border: 2px solid #1e90ff;
@@ -55,7 +55,7 @@
         }
         .btn-sin.active { background: #1e90ff; color: white; }
 
-        /* 코사인 버튼 */
+        /* 코사인 범위 버튼 */
         .btn-cos {
             padding: 6px 13px;
             border: 2px solid #e67e22;
@@ -68,7 +68,7 @@
         }
         .btn-cos.active { background: #e67e22; color: white; }
 
-        /* 공통 속도 버튼 */
+        /* 속도 버튼 */
         .btn-speed {
             padding: 5px 12px;
             border: 2px solid #888;
@@ -80,6 +80,32 @@
             font-family: sans-serif;
         }
         .btn-speed.active { background: #555; color: white; }
+
+        /* 사인 계수 버튼 */
+        .btn-amp-sin {
+            padding: 5px 11px;
+            border: 2px solid #27ae60;
+            background: white;
+            color: #27ae60;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+        .btn-amp-sin.active { background: #27ae60; color: white; }
+
+        /* 코사인 계수 버튼 */
+        .btn-amp-cos {
+            padding: 5px 11px;
+            border: 2px solid #8e44ad;
+            background: white;
+            color: #8e44ad;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: sans-serif;
+        }
+        .btn-amp-cos.active { background: #8e44ad; color: white; }
 
         .divider {
             width: 1000px;
@@ -93,15 +119,23 @@
 <!-- 사인함수 섹션 -->
 <div class="section">
     <div class="section-header">
-        <span class="section-title">y = sin x</span>
+        <span class="section-title" id="sin-title">y = sin x</span>
         <div class="controls-row">
-            <button class="btn-sin active" id="sin-btn2pi" onclick="setMode('sin','2pi')">0 &lt; x &lt; 2π</button>
-            <button class="btn-sin" id="sin-btn6pi" onclick="setMode('sin','6pi')">0 &lt; x &lt; 6π</button>
+            <button class="btn-sin active" id="sin-btn2pi"    onclick="setMode('sin','2pi')">0 &lt; x &lt; 2π</button>
+            <button class="btn-sin"        id="sin-btn6pi"    onclick="setMode('sin','6pi')">0 &lt; x &lt; 6π</button>
+            <button class="btn-sin"        id="sin-btnneg4pi" onclick="setMode('sin','neg4pi')">-4π &lt; x &lt; 4π</button>
+        </div>
+        <div class="controls-row">
+            <span class="speed-label">계수:</span>
+            <button class="btn-amp-sin"        id="sin-amp-half" onclick="setAmplitude('sin',0.5)">½</button>
+            <button class="btn-amp-sin active" id="sin-amp-1"    onclick="setAmplitude('sin',1)">1</button>
+            <button class="btn-amp-sin"        id="sin-amp-2"    onclick="setAmplitude('sin',2)">2</button>
+            <button class="btn-amp-sin"        id="sin-amp-3"    onclick="setAmplitude('sin',3)">3</button>
         </div>
         <div class="controls-row">
             <span class="speed-label">속도:</span>
             <button class="btn-speed active" id="sin-btn1x" onclick="setSpeed('sin',1)">1배속</button>
-            <button class="btn-speed" id="sin-btn2x" onclick="setSpeed('sin',2)">2배속</button>
+            <button class="btn-speed"        id="sin-btn2x" onclick="setSpeed('sin',2)">2배속</button>
         </div>
     </div>
     <canvas id="sinCanvas"></canvas>
@@ -112,15 +146,23 @@
 <!-- 코사인함수 섹션 -->
 <div class="section">
     <div class="section-header">
-        <span class="section-title">y = cos x</span>
+        <span class="section-title" id="cos-title">y = cos x</span>
         <div class="controls-row">
-            <button class="btn-cos active" id="cos-btn2pi" onclick="setMode('cos','2pi')">0 &lt; x &lt; 2π</button>
-            <button class="btn-cos" id="cos-btn6pi" onclick="setMode('cos','6pi')">0 &lt; x &lt; 6π</button>
+            <button class="btn-cos active" id="cos-btn2pi"    onclick="setMode('cos','2pi')">0 &lt; x &lt; 2π</button>
+            <button class="btn-cos"        id="cos-btn6pi"    onclick="setMode('cos','6pi')">0 &lt; x &lt; 6π</button>
+            <button class="btn-cos"        id="cos-btnneg4pi" onclick="setMode('cos','neg4pi')">-4π &lt; x &lt; 4π</button>
+        </div>
+        <div class="controls-row">
+            <span class="speed-label">계수:</span>
+            <button class="btn-amp-cos"        id="cos-amp-half" onclick="setAmplitude('cos',0.5)">½</button>
+            <button class="btn-amp-cos active" id="cos-amp-1"    onclick="setAmplitude('cos',1)">1</button>
+            <button class="btn-amp-cos"        id="cos-amp-2"    onclick="setAmplitude('cos',2)">2</button>
+            <button class="btn-amp-cos"        id="cos-amp-3"    onclick="setAmplitude('cos',3)">3</button>
         </div>
         <div class="controls-row">
             <span class="speed-label">속도:</span>
             <button class="btn-speed active" id="cos-btn1x" onclick="setSpeed('cos',1)">1배속</button>
-            <button class="btn-speed" id="cos-btn2x" onclick="setSpeed('cos',2)">2배속</button>
+            <button class="btn-speed"        id="cos-btn2x" onclick="setSpeed('cos',2)">2배속</button>
         </div>
     </div>
     <canvas id="cosCanvas"></canvas>
@@ -129,8 +171,8 @@
 <script>
 // ── 상태 관리 ──────────────────────────────────────────────
 const state = {
-    sin: { mode: '2pi', angle: 0, points: [], paused: false, animId: null, speedMult: 1 },
-    cos: { mode: '2pi', angle: 0, points: [], paused: false, animId: null, speedMult: 1 }
+    sin: { mode: '2pi', angle: 0, points: [], paused: false, animId: null, speedMult: 1, amplitude: 1 },
+    cos: { mode: '2pi', angle: 0, points: [], paused: false, animId: null, speedMult: 1, amplitude: 1 }
 };
 
 const canvases = {
@@ -155,12 +197,13 @@ function togglePause(fn) {
 function setMode(fn, m) {
     const s = state[fn];
     s.mode = m;
-    s.angle = 0;
+    const cfg = getConfig(m, s.amplitude);
+    s.angle = cfg.startAngle;
     s.points = [];
     s.paused = false;
-    document.getElementById(`${fn}-btn2pi`).classList.toggle('active', m === '2pi');
-    document.getElementById(`${fn}-btn6pi`).classList.toggle('active', m === '6pi');
-    const cfg = getConfig(m);
+    document.getElementById(`${fn}-btn2pi`).classList.toggle('active',    m === '2pi');
+    document.getElementById(`${fn}-btn6pi`).classList.toggle('active',    m === '6pi');
+    document.getElementById(`${fn}-btnneg4pi`).classList.toggle('active', m === 'neg4pi');
     canvases[fn].width  = cfg.canvasWidth;
     canvases[fn].height = cfg.canvasHeight;
     if (s.animId) cancelAnimationFrame(s.animId);
@@ -173,24 +216,92 @@ function setSpeed(fn, mult) {
     document.getElementById(`${fn}-btn2x`).classList.toggle('active', mult === 2);
 }
 
+function setAmplitude(fn, amp) {
+    const s = state[fn];
+    s.amplitude = amp;
+    const cfg = getConfig(s.mode, amp);
+    s.angle = cfg.startAngle;
+    s.points = [];
+    s.paused = false;
+
+    const ids = { 0.5: 'half', 1: '1', 2: '2', 3: '3' };
+    Object.entries(ids).forEach(([a, suffix]) => {
+        document.getElementById(`${fn}-amp-${suffix}`)
+            .classList.toggle('active', Number(a) === amp);
+    });
+
+    updateTitle(fn);
+
+    canvases[fn].width  = cfg.canvasWidth;
+    canvases[fn].height = cfg.canvasHeight;
+    if (s.animId) cancelAnimationFrame(s.animId);
+    draw(fn);
+}
+
+function updateTitle(fn) {
+    const amp = state[fn].amplitude;
+    const funcName = fn === 'sin' ? 'sin' : 'cos';
+    let prefix;
+    if (amp === 0.5)    prefix = '½ ';
+    else if (amp === 1) prefix = '';
+    else                prefix = amp + ' ';
+    document.getElementById(`${fn}-title`).textContent = `y = ${prefix}${funcName} x`;
+}
+
 // ── 설정 ──────────────────────────────────────────────────
-function getConfig(mode) {
+// 모든 모드는 startAngle → endAngle 구간을 가짐.
+// gx = graphOrigin.x + (angle - startAngle) * radius
+function getConfig(mode, amplitude) {
+    amplitude = amplitude || 1;
+
     if (mode === '2pi') {
+        const radius = 75;
+        const graphAmpPx = amplitude * radius;
+        const canvasHeight = Math.max(400, Math.ceil(graphAmpPx * 2 + 100));
+        const cy = canvasHeight / 2;
         return {
-            canvasWidth: 1000, canvasHeight: 400,
-            radius: 75,
-            circleCenter: { x: 185, y: 200 },
-            graphOrigin:  { x: 370, y: 200 },
-            maxAngle: Math.PI * 2,
+            canvasWidth: 1000, canvasHeight,
+            radius, amplitude,
+            circleCenter: { x: 185, y: cy },
+            graphOrigin:  { x: 370, y: cy },
+            startAngle: 0,
+            endAngle:   Math.PI * 2,
             speed: 0.02
         };
-    } else {
+
+    } else if (mode === '6pi') {
+        const radius = 48;
+        const graphAmpPx = amplitude * radius;
+        const graphOriginY = 348;
+        const canvasHeight = Math.max(440, graphOriginY + graphAmpPx + 50);
         return {
-            canvasWidth: 1000, canvasHeight: 440,
-            radius: 48,
+            canvasWidth: 1000, canvasHeight,
+            radius, amplitude,
             circleCenter: { x: 500, y: 115 },
-            graphOrigin:  { x: 45,  y: 348 },
-            maxAngle: Math.PI * 6,
+            graphOrigin:  { x: 45,  y: graphOriginY },
+            startAngle: 0,
+            endAngle:   Math.PI * 6,
+            speed: 0.02
+        };
+
+    } else {
+        // neg4pi: -4π < x < 4π
+        // 원은 캔버스 위쪽, x=0 위치 바로 위에 배치
+        const radius = 35;
+        const graphAmpPx = amplitude * radius;
+        const graphOriginX = 55;
+        const graphOriginY = 345;
+        // x=0 의 canvas 상 x 좌표 = graphOriginX + 4π * radius
+        const circleX = Math.round(graphOriginX + 4 * Math.PI * radius);
+        const circleY = 105;
+        const canvasHeight = Math.max(460, graphOriginY + graphAmpPx + 60);
+        return {
+            canvasWidth: 1000, canvasHeight,
+            radius, amplitude,
+            circleCenter: { x: circleX, y: circleY },
+            graphOrigin:  { x: graphOriginX, y: graphOriginY },
+            startAngle: -Math.PI * 4,
+            endAngle:    Math.PI * 4,
             speed: 0.02
         };
     }
@@ -198,55 +309,76 @@ function getConfig(mode) {
 
 // ── 축 그리기 ─────────────────────────────────────────────
 function drawAxes(ctx, cfg) {
-    const { radius, circleCenter, graphOrigin, maxAngle } = cfg;
-    const graphWidth = maxAngle * radius;
+    const { radius, circleCenter, graphOrigin, startAngle, endAngle, amplitude } = cfg;
+    const graphWidth = (endAngle - startAngle) * radius;
+    const graphAmpPx = amplitude * radius;
+
+    // x=0 의 canvas 상 x 좌표 (y축 위치)
+    const zeroX = graphOrigin.x + (0 - startAngle) * radius;
 
     ctx.lineWidth = 1;
 
-    // 원 중심축 + 그래프 축
+    // 원 중심축
     ctx.strokeStyle = '#ccc';
     ctx.beginPath();
     ctx.moveTo(circleCenter.x - radius - 20, circleCenter.y);
     ctx.lineTo(circleCenter.x + radius + 20, circleCenter.y);
     ctx.moveTo(circleCenter.x, circleCenter.y - radius - 20);
     ctx.lineTo(circleCenter.x, circleCenter.y + radius + 20);
-    ctx.moveTo(graphOrigin.x, graphOrigin.y);
-    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y);
-    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius - 20);
-    ctx.lineTo(graphOrigin.x, graphOrigin.y + radius + 20);
+
+    // 그래프 x축
+    ctx.moveTo(graphOrigin.x - 10,               graphOrigin.y);
+    ctx.lineTo(graphOrigin.x + graphWidth + 20,  graphOrigin.y);
+
+    // 그래프 y축 (x=0 위치)
+    ctx.moveTo(zeroX, graphOrigin.y - graphAmpPx - 20);
+    ctx.lineTo(zeroX, graphOrigin.y + graphAmpPx + 20);
     ctx.stroke();
 
-    // y=1, y=-1 점선
+    // y=±amplitude 점선
     ctx.setLineDash([6, 4]);
     ctx.strokeStyle = 'rgba(150,150,150,0.6)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius);
-    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y - radius);
-    ctx.moveTo(graphOrigin.x, graphOrigin.y + radius);
-    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y + radius);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - graphAmpPx);
+    ctx.lineTo(graphOrigin.x + graphWidth + 20, graphOrigin.y - graphAmpPx);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + graphAmpPx);
+    ctx.lineTo(graphOrigin.x + graphWidth + 20, graphOrigin.y + graphAmpPx);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // y축 레이블
+    // y축 레이블 (y축 바로 왼쪽)
+    const ampLabel = amplitude === 0.5 ? '½' : String(amplitude);
     ctx.fillStyle = '#555';
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('1',  graphOrigin.x - 6, graphOrigin.y - radius + 4);
-    ctx.fillText('-1', graphOrigin.x - 6, graphOrigin.y + radius + 4);
+    ctx.fillText(ampLabel,        zeroX - 5, graphOrigin.y - graphAmpPx + 4);
+    ctx.fillText('-' + ampLabel,  zeroX - 5, graphOrigin.y + graphAmpPx + 4);
 
     // x축 눈금 & 레이블
-    const cycles = Math.round(maxAngle / Math.PI);
+    const totalPiSteps = Math.round((endAngle - startAngle) / Math.PI);
+    const firstStep = startAngle < 0 ? 0 : 1;
+
     ctx.strokeStyle = '#aaa';
-    for (let i = 1; i <= cycles; i++) {
-        const xMark = graphOrigin.x + i * Math.PI * radius;
+    for (let i = firstStep; i <= totalPiSteps; i++) {
+        const angle   = startAngle + i * Math.PI;
+        const xMark   = graphOrigin.x + i * Math.PI * radius;
+        const piCount = Math.round(angle / Math.PI);
+
         ctx.beginPath();
         ctx.moveTo(xMark, graphOrigin.y - 5);
         ctx.lineTo(xMark, graphOrigin.y + 5);
         ctx.stroke();
+
+        let label;
+        if      (piCount === 0)  label = '0';
+        else if (piCount === 1)  label = 'π';
+        else if (piCount === -1) label = '-π';
+        else                     label = piCount + 'π';
+
         ctx.textAlign = 'center';
         ctx.fillStyle = '#555';
-        ctx.fillText(i === 1 ? 'π' : i + 'π', xMark, graphOrigin.y + 17);
+        ctx.fillText(label, xMark, graphOrigin.y + 17);
     }
 }
 
@@ -255,8 +387,8 @@ function draw(fn) {
     const s = state[fn];
     if (s.paused) return;
 
-    const cfg = getConfig(s.mode);
-    const { radius, circleCenter, graphOrigin, maxAngle, speed } = cfg;
+    const cfg = getConfig(s.mode, s.amplitude);
+    const { radius, circleCenter, graphOrigin, startAngle, endAngle, speed, amplitude } = cfg;
     const ctx = contexts[fn];
 
     ctx.clearRect(0, 0, canvases[fn].width, canvases[fn].height);
@@ -269,7 +401,7 @@ function draw(fn) {
     ctx.arc(circleCenter.x, circleCenter.y, radius, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 회전점 계산
+    // 회전점 (단위원 위, 계수 무관)
     const px = circleCenter.x + radius * Math.cos(-s.angle);
     const py = circleCenter.y + radius * Math.sin(-s.angle);
 
@@ -284,18 +416,18 @@ function draw(fn) {
     ctx.lineTo(px, py);
     ctx.stroke();
 
-    // 원 위의 점
+    // 원 위 점
     ctx.fillStyle = dotColor;
     ctx.beginPath();
     ctx.arc(px, py, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    const gx = graphOrigin.x + s.angle * radius;
+    // 그래프 x 좌표: startAngle 기준으로 오프셋
+    const gx = graphOrigin.x + (s.angle - startAngle) * radius;
     let gy;
 
     if (fn === 'sin') {
-        // y좌표 → 그래프
-        gy = graphOrigin.y + (py - circleCenter.y);
+        gy = graphOrigin.y + amplitude * (py - circleCenter.y);
 
         ctx.setLineDash([5, 5]);
         ctx.strokeStyle = 'rgba(255,71,87,0.5)';
@@ -307,8 +439,7 @@ function draw(fn) {
         ctx.setLineDash([]);
 
     } else {
-        // x좌표 → 그래프
-        gy = graphOrigin.y - (px - circleCenter.x);
+        gy = graphOrigin.y - amplitude * (px - circleCenter.x);
 
         // x축 투영선
         ctx.setLineDash([4, 3]);
@@ -345,16 +476,17 @@ function draw(fn) {
     ctx.beginPath();
     s.points.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
+        else         ctx.lineTo(p.x, p.y);
     });
     ctx.stroke();
 
-    // 펼쳐지는 선 (호의 길이)
+    // 펼쳐지는 선 (호의 길이) — x=0 기준점(zeroX)에서 현재 점까지
+    const zeroX = graphOrigin.x + (0 - startAngle) * radius;
     ctx.strokeStyle = '#2ed573';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(graphOrigin.x, graphOrigin.y + 2);
-    ctx.lineTo(gx, graphOrigin.y + 2);
+    ctx.moveTo(zeroX, graphOrigin.y + 2);
+    ctx.lineTo(gx,    graphOrigin.y + 2);
     ctx.stroke();
 
     // 그래프 위 현재 점
@@ -364,8 +496,8 @@ function draw(fn) {
     ctx.fill();
 
     s.angle += speed * s.speedMult;
-    if (s.angle > maxAngle) {
-        s.angle = 0;
+    if (s.angle > endAngle) {
+        s.angle = startAngle;
         s.points = [];
     }
 
@@ -374,9 +506,10 @@ function draw(fn) {
 
 // ── 초기화 ────────────────────────────────────────────────
 ['sin', 'cos'].forEach(fn => {
-    const cfg = getConfig('2pi');
+    const cfg = getConfig('2pi', 1);
     canvases[fn].width  = cfg.canvasWidth;
     canvases[fn].height = cfg.canvasHeight;
+    state[fn].angle = cfg.startAngle;
     draw(fn);
 });
 </script>
