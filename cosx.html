@@ -14,6 +14,8 @@
         .speed-label { font-size: 13px; color: #555; margin-right: 2px; }
         .btn-speed { padding: 6px 14px; border: 2px solid #888; background: white; color: #555; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; }
         .btn-speed.active { background: #555; color: white; }
+        .btn-amp { padding: 6px 13px; border: 2px solid #8e44ad; background: white; color: #8e44ad; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; }
+        .btn-amp.active { background: #8e44ad; color: white; }
     </style>
 </head>
 <body>
@@ -21,13 +23,21 @@
 <a class="back-btn" href="index.html">← 메인으로</a>
 <div class="controls">
     <div class="controls-row">
-        <button class="btn active" id="btn2pi" onclick="setMode('2pi')">y = cos x &nbsp;(0 &lt; x &lt; 2π)</button>
-        <button class="btn" id="btn6pi" onclick="setMode('6pi')">y = cos x &nbsp;(0 &lt; x &lt; 6π)</button>
+        <button class="btn active"  id="btn2pi"    onclick="setMode('2pi')">y = cos x &nbsp;(0 &lt; x &lt; 2π)</button>
+        <button class="btn"         id="btn6pi"    onclick="setMode('6pi')">y = cos x &nbsp;(0 &lt; x &lt; 6π)</button>
+        <button class="btn"         id="btnneg4pi" onclick="setMode('neg4pi')">y = cos x &nbsp;(-4π &lt; x &lt; 4π)</button>
+    </div>
+    <div class="controls-row">
+        <span class="speed-label">계수:</span>
+        <button class="btn-amp"        id="amp-half" onclick="setAmplitude(0.5)">½</button>
+        <button class="btn-amp active" id="amp-1"    onclick="setAmplitude(1)">1</button>
+        <button class="btn-amp"        id="amp-2"    onclick="setAmplitude(2)">2</button>
+        <button class="btn-amp"        id="amp-3"    onclick="setAmplitude(3)">3</button>
     </div>
     <div class="controls-row">
         <span class="speed-label">속도:</span>
         <button class="btn-speed active" id="btn1x" onclick="setSpeed(1)">1배속</button>
-        <button class="btn-speed" id="btn2x" onclick="setSpeed(2)">2배속</button>
+        <button class="btn-speed"        id="btn2x" onclick="setSpeed(2)">2배속</button>
     </div>
 </div>
 <canvas id="canvas"></canvas>
@@ -37,6 +47,7 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 let mode = '2pi';
+let amplitude = 1;
 let angle = 0;
 let points = [];
 let paused = true;
@@ -60,24 +71,27 @@ function isNearCircle(pos, cfg) {
     return Math.sqrt(dx*dx + dy*dy) <= radius + 24;
 }
 function setAngleFromMouse(pos, cfg) {
-    const { circleCenter, maxAngle } = cfg;
+    const { circleCenter, startAngle, endAngle } = cfg;
     const dx = pos.x - circleCenter.x, dy = pos.y - circleCenter.y;
     let raw = -Math.atan2(dy, dx);
     const k = Math.round((angle - raw) / (Math.PI * 2));
     let a = raw + k * Math.PI * 2;
-    a = Math.max(0, Math.min(maxAngle, a));
+    a = Math.max(startAngle, Math.min(endAngle, a));
     angle = a;
     points = buildPoints(cfg, angle);
 }
 function buildPoints(cfg, toAngle) {
-    const { radius, circleCenter, graphOrigin } = cfg;
+    const { radius, circleCenter, graphOrigin, startAngle } = cfg;
+    const amp = amplitude;
     const pts = [];
     const step = 0.02;
-    for (let a = 0; a <= toAngle + 1e-9; a += step) {
+    for (let a = startAngle; a <= toAngle + 1e-9; a += step) {
         const a2 = Math.min(a, toAngle);
         const px_a = circleCenter.x + radius * Math.cos(-a2);
-        pts.push({ x: graphOrigin.x + a2 * radius,
-                   y: graphOrigin.y - (px_a - circleCenter.x) });
+        pts.push({
+            x: graphOrigin.x + (a2 - startAngle) * radius,
+            y: graphOrigin.y - amp * (px_a - circleCenter.x)
+        });
     }
     return pts;
 }
@@ -113,57 +127,103 @@ canvas.addEventListener('mouseleave', () => {
     canvas.style.cursor = 'default';
 });
 
+// ── 설정 ──────────────────────────────────────────────────
+function getConfig() {
+    if (mode === '2pi') {
+        const radius = 115;
+        const graphAmpPx = amplitude * radius;
+        const canvasHeight = Math.max(640, Math.ceil(graphAmpPx * 2 + 100));
+        const cy = canvasHeight / 2;
+        return {
+            canvasWidth: 1400, canvasHeight,
+            radius,
+            circleCenter: { x: 240, y: cy },
+            graphOrigin:  { x: 530, y: cy },
+            startAngle: 0,
+            endAngle:   Math.PI * 2,
+            speed: 0.02
+        };
+    } else if (mode === '6pi') {
+        const radius = 65;
+        const graphAmpPx = amplitude * radius;
+        const graphOriginY = 520;
+        const canvasHeight = Math.max(700, graphOriginY + graphAmpPx + 50);
+        return {
+            canvasWidth: 1400, canvasHeight,
+            radius,
+            circleCenter: { x: 700, y: 165 },
+            graphOrigin:  { x: 60,  y: graphOriginY },
+            startAngle: 0,
+            endAngle:   Math.PI * 6,
+            speed: 0.02
+        };
+    } else {
+        // neg4pi: -4π < x < 4π
+        const radius = 50;
+        const graphAmpPx = amplitude * radius;
+        const graphOriginX = 60;
+        const graphOriginY = 520;
+        const circleX = Math.round(graphOriginX + 4 * Math.PI * radius);
+        const canvasHeight = Math.max(700, graphOriginY + graphAmpPx + 50);
+        return {
+            canvasWidth: 1400, canvasHeight,
+            radius,
+            circleCenter: { x: circleX, y: 165 },
+            graphOrigin:  { x: graphOriginX, y: graphOriginY },
+            startAngle: -Math.PI * 4,
+            endAngle:    Math.PI * 4,
+            speed: 0.02
+        };
+    }
+}
+
 function setSpeed(mult) {
     speedMultiplier = mult;
     document.getElementById('btn1x').classList.toggle('active', mult === 1);
     document.getElementById('btn2x').classList.toggle('active', mult === 2);
 }
 
-function getConfig() {
-    if (mode === '2pi') {
-        return {
-            canvasWidth: 1400,
-            canvasHeight: 640,
-            radius: 115,
-            circleCenter: { x: 240, y: 320 },
-            graphOrigin:  { x: 530, y: 320 },
-            maxAngle: Math.PI * 2,
-            speed: 0.02
-        };
-    } else {
-        return {
-            canvasWidth: 1400,
-            canvasHeight: 700,
-            radius: 65,
-            circleCenter: { x: 700, y: 165 },
-            graphOrigin:  { x: 60,  y: 520 },
-            maxAngle: Math.PI * 6,
-            speed: 0.02
-        };
-    }
-}
-
 function setMode(m) {
     mode = m;
-    angle = 0;
+    const cfg = getConfig();
+    angle = cfg.startAngle;
     points = [];
     paused = true;
     waiting = false;
     if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
-    document.getElementById('btn2pi').classList.toggle('active', m === '2pi');
-    document.getElementById('btn6pi').classList.toggle('active', m === '6pi');
-    const cfg = getConfig();
-    canvas.width = cfg.canvasWidth;
+    document.getElementById('btn2pi').classList.toggle('active',    m === '2pi');
+    document.getElementById('btn6pi').classList.toggle('active',    m === '6pi');
+    document.getElementById('btnneg4pi').classList.toggle('active', m === 'neg4pi');
+    canvas.width  = cfg.canvasWidth;
     canvas.height = cfg.canvasHeight;
     if (animId) cancelAnimationFrame(animId);
     draw();
 }
 
-function drawAxes(cfg) {
-    const { radius, circleCenter, graphOrigin, maxAngle } = cfg;
-    const graphWidth = maxAngle * radius;
+function setAmplitude(amp) {
+    amplitude = amp;
+    document.getElementById('amp-half').classList.toggle('active', amp === 0.5);
+    document.getElementById('amp-1').classList.toggle('active',    amp === 1);
+    document.getElementById('amp-2').classList.toggle('active',    amp === 2);
+    document.getElementById('amp-3').classList.toggle('active',    amp === 3);
+    const cfg = getConfig();
+    angle = cfg.startAngle;
+    points = [];
+    paused = true;
+    waiting = false;
+    if (waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; }
+    canvas.width  = cfg.canvasWidth;
+    canvas.height = cfg.canvasHeight;
+    if (animId) cancelAnimationFrame(animId);
+    draw();
+}
 
-    ctx.lineWidth = 1;
+// ── 축 그리기 ─────────────────────────────────────────────
+function drawAxes(cfg) {
+    const { radius, circleCenter, graphOrigin, startAngle, endAngle } = cfg;
+    const graphWidth = (endAngle - startAngle) * radius;
+    const graphAmpPx = amplitude * radius;
+    const zeroX = graphOrigin.x + (0 - startAngle) * radius;
 
     // 원 중심축
     ctx.strokeStyle = '#333';
@@ -175,63 +235,75 @@ function drawAxes(cfg) {
     ctx.lineTo(circleCenter.x, circleCenter.y + radius + 20);
     ctx.stroke();
 
-    // 그래프 x축, y축 (검은색)
+    // 그래프 x축 & y축
     ctx.strokeStyle = '#222';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(graphOrigin.x, graphOrigin.y);
+    ctx.moveTo(graphOrigin.x - 10,              graphOrigin.y);
     ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y);
-    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius - 20);
-    ctx.lineTo(graphOrigin.x, graphOrigin.y + radius + 20);
+    ctx.moveTo(zeroX, graphOrigin.y - graphAmpPx - 20);
+    ctx.lineTo(zeroX, graphOrigin.y + graphAmpPx + 20);
     ctx.stroke();
 
-    // y=1, y=-1 점선
+    // y=±amplitude 점선
     ctx.setLineDash([6, 4]);
     ctx.strokeStyle = 'rgba(150, 150, 150, 0.6)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(graphOrigin.x, graphOrigin.y - radius);
-    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y - radius);
-    ctx.moveTo(graphOrigin.x, graphOrigin.y + radius);
-    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y + radius);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y - graphAmpPx);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y - graphAmpPx);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + graphAmpPx);
+    ctx.lineTo(graphOrigin.x + graphWidth + 30, graphOrigin.y + graphAmpPx);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // y축 레이블 (1, -1)
+    // y축 레이블
+    const ampLabel = amplitude === 0.5 ? '½' : String(amplitude);
     ctx.fillStyle = '#333';
     ctx.font = '26px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('1',  graphOrigin.x - 10, graphOrigin.y - radius + 8);
-    ctx.fillText('-1', graphOrigin.x - 10, graphOrigin.y + radius + 8);
+    ctx.fillText(ampLabel,        zeroX - 10, graphOrigin.y - graphAmpPx + 8);
+    ctx.fillText('-' + ampLabel,  zeroX - 10, graphOrigin.y + graphAmpPx + 8);
+    if (startAngle === 0) {
+        ctx.fillText('0', zeroX - 10, graphOrigin.y + 34);
+    }
 
-    // 원점 레이블 (0)
-    ctx.fillText('0', graphOrigin.x - 10, graphOrigin.y + 34);
-
-    // 단위원 x축, y축 레이블
+    // 단위원 레이블
     ctx.textAlign = 'left';
-    ctx.fillText('1',  circleCenter.x + radius + 6, circleCenter.y + 9);   // x축 오른쪽
+    ctx.fillText('1',  circleCenter.x + radius + 6, circleCenter.y + 9);
     ctx.textAlign = 'right';
-    ctx.fillText('-1', circleCenter.x - radius - 4, circleCenter.y + 9);   // x축 왼쪽
-    ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius + 9);   // y축 위
-    ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 9);   // y축 아래
+    ctx.fillText('-1', circleCenter.x - radius - 4, circleCenter.y + 9);
+    ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius + 9);
+    ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 9);
 
-    // x축 눈금 및 레이블 (π 단위)
-    const cycles = Math.round(maxAngle / Math.PI);
+    // x축 눈금 & 레이블
+    const totalPiSteps = Math.round((endAngle - startAngle) / Math.PI);
+    const firstStep = startAngle < 0 ? 0 : 1;
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 1;
-    for (let i = 1; i <= cycles; i++) {
-        const xMark = graphOrigin.x + i * Math.PI * radius;
+    for (let i = firstStep; i <= totalPiSteps; i++) {
+        const a       = startAngle + i * Math.PI;
+        const xMark   = graphOrigin.x + i * Math.PI * radius;
+        const piCount = Math.round(a / Math.PI);
+
         ctx.beginPath();
         ctx.moveTo(xMark, graphOrigin.y - 6);
         ctx.lineTo(xMark, graphOrigin.y + 6);
         ctx.stroke();
+
+        let label;
+        if      (piCount === 0)  label = '0';
+        else if (piCount === 1)  label = 'π';
+        else if (piCount === -1) label = '-π';
+        else                     label = piCount + 'π';
+
         ctx.textAlign = 'center';
         ctx.fillStyle = '#333';
-        const label = i === 1 ? 'π' : i + 'π';
         ctx.fillText(label, xMark, graphOrigin.y + 34);
     }
 }
 
+// ── 일시정지 힌트 ─────────────────────────────────────────
 function drawPauseHint() {
     if (!paused || isDragging) return;
     ctx.save();
@@ -242,12 +314,12 @@ function drawPauseHint() {
     ctx.restore();
 }
 
+// ── 메인 드로우 ───────────────────────────────────────────
 function draw() {
     const cfg = getConfig();
-    const { radius, circleCenter, graphOrigin, maxAngle, speed } = cfg;
+    const { radius, circleCenter, graphOrigin, startAngle, endAngle, speed } = cfg;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     drawAxes(cfg);
 
     // 단위원
@@ -275,37 +347,34 @@ function draw() {
     ctx.arc(px, py, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    // x축 위 투영점 (코사인의 x좌표 시각화)
+    // x축 투영선
     ctx.strokeStyle = 'rgba(230, 126, 34, 0.4)';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([4, 3]);
     ctx.beginPath();
     ctx.moveTo(circleCenter.x, circleCenter.y);
-    ctx.lineTo(px, circleCenter.y); // x축에 투영
+    ctx.lineTo(px, circleCenter.y);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 투영점 표시
+    // 투영점
     ctx.fillStyle = '#e67e22';
     ctx.beginPath();
     ctx.arc(px, circleCenter.y, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // 그래프 좌표
-    // cos(angle) = (px - circleCenter.x) / radius
-    // gy = graphOrigin.y - radius * cos(angle) = graphOrigin.y - (px - circleCenter.x)
-    const gx = graphOrigin.x + angle * radius;
-    const gy = graphOrigin.y - (px - circleCenter.x);
+    const gx = graphOrigin.x + (angle - startAngle) * radius;
+    const gy = graphOrigin.y - amplitude * (px - circleCenter.x);
 
     points.push({ x: gx, y: gy });
 
-    // 연결선: 투영점 → 그래프 점 (코사인의 x좌표가 그래프 y값이 됨을 시각화)
+    // 연결선: 투영점 → 그래프 점
     ctx.setLineDash([5, 5]);
     ctx.strokeStyle = 'rgba(230, 126, 34, 0.5)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(px, circleCenter.y); // x축 투영점
-    ctx.lineTo(gx, gy);            // 그래프 위의 점
+    ctx.moveTo(px, circleCenter.y);
+    ctx.lineTo(gx, gy);
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -319,12 +388,13 @@ function draw() {
     });
     ctx.stroke();
 
-    // 펼쳐지는 선 (호의 길이)
+    // 펼쳐지는 선 (x=0 기준)
+    const zeroX = graphOrigin.x + (0 - startAngle) * radius;
     ctx.strokeStyle = '#2ed573';
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(graphOrigin.x, graphOrigin.y + 2);
-    ctx.lineTo(gx, graphOrigin.y + 2);
+    ctx.moveTo(zeroX, graphOrigin.y + 2);
+    ctx.lineTo(gx,    graphOrigin.y + 2);
     ctx.stroke();
 
     // 그래프 위의 현재 점
@@ -337,11 +407,11 @@ function draw() {
 
     if (!isDragging && !paused) {
         if (!waiting) angle += speed * speedMultiplier;
-        if (angle > maxAngle && !waiting) {
+        if (angle > endAngle && !waiting) {
             waiting = true;
-            angle = maxAngle;
+            angle = endAngle;
             waitTimeout = setTimeout(() => {
-                angle = 0;
+                angle = startAngle;
                 points = [];
                 waiting = false;
                 waitTimeout = null;
@@ -351,9 +421,9 @@ function draw() {
     }
 }
 
-// 초기 캔버스 크기 설정 후 실행
+// ── 초기화 ────────────────────────────────────────────────
 const initCfg = getConfig();
-canvas.width = initCfg.canvasWidth;
+canvas.width  = initCfg.canvasWidth;
 canvas.height = initCfg.canvasHeight;
 draw();
 </script>
