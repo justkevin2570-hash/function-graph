@@ -303,6 +303,31 @@ function drawAxes(cfg) {
     }
 }
 
+// ── 함수식 표시 ───────────────────────────────────────────
+function drawFormula() {
+    let prefix;
+    if (amplitude === 0.5)    prefix = '½';
+    else if (amplitude === 1) prefix = '';
+    else                      prefix = String(amplitude);
+
+    const formula = prefix ? `y = ${prefix} sin x` : 'y = sin x';
+
+    ctx.save();
+    ctx.font = 'bold 30px serif';
+    const tw  = ctx.measureText(formula).width;
+    const x = 24, y = 56, pad = 12, h = 44;
+
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.beginPath();
+    ctx.roundRect(x - pad, y - 32, tw + pad * 2, h, 8);
+    ctx.fill();
+
+    ctx.fillStyle = '#1e90ff';
+    ctx.textAlign = 'left';
+    ctx.fillText(formula, x, y);
+    ctx.restore();
+}
+
 // ── 일시정지 힌트 ─────────────────────────────────────────
 function drawPauseHint() {
     if (!paused || isDragging) return;
@@ -321,6 +346,7 @@ function draw() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawAxes(cfg);
+    drawFormula();
 
     // 단위원
     ctx.strokeStyle = '#333';
