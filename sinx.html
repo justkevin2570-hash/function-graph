@@ -126,6 +126,7 @@
         <div class="btn-group">
             <button class="btn-speed active" id="btn1x" onclick="setSpeed(1)">1배속</button>
             <button class="btn-speed"        id="btn2x" onclick="setSpeed(2)">2배속</button>
+            <button class="btn-speed"        id="btn3x" onclick="setSpeed(3)">3배속</button>
         </div>
     </div>
 </div>
@@ -250,6 +251,7 @@ function setSpeed(mult) {
     speedMultiplier = mult;
     document.getElementById('btn1x').classList.toggle('active', mult === 1);
     document.getElementById('btn2x').classList.toggle('active', mult === 2);
+    document.getElementById('btn3x').classList.toggle('active', mult === 3);
 }
 function setMode(m) {
     mode = m;
