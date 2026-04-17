@@ -15,11 +15,12 @@
 
         /* ── 사이드바 ── */
         .sidebar {
-            width: 210px;
+            width: 315px;
             min-height: 100vh;
             background: #16213e;
             display: flex;
             flex-direction: column;
+            align-items: center;
             padding: 20px 14px;
             flex-shrink: 0;
             box-shadow: 2px 0 14px rgba(0,0,0,0.18);
@@ -31,7 +32,7 @@
             color: rgba(255,255,255,0.82);
             text-decoration: none;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 19px;
             text-align: center;
             border: 1px solid rgba(255,255,255,0.12);
             margin-bottom: 24px;
@@ -39,33 +40,43 @@
         }
         .back-btn:hover { background: rgba(255,255,255,0.15); }
 
-        .section-group { margin-bottom: 18px; }
+        .section-group { margin-bottom: 18px; width: 100%; }
         .section-label {
-            font-size: 10px;
+            font-size: 15px;
             font-weight: 700;
             letter-spacing: 1.4px;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.32);
+            color: #222;
+            background: white;
+            border: 1px solid #000;
+            border-radius: 4px;
+            padding: 3px 8px;
+            display: inline-block;
             margin-bottom: 7px;
         }
-        .btn-group       { display: flex; flex-wrap: wrap; gap: 5px; }
+        .btn-group       { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
         .btn-group.col   { flex-direction: column; }
 
         /* 범위 버튼 (cos = 주황) */
-        .btn { padding: 8px 10px; border: 2px solid #e67e22; background: white; color: #e67e22; border-radius: 6px; cursor: pointer; font-size: 11.5px; font-family: sans-serif; width: 100%; text-align: left; line-height: 1.3; }
+        .btn { padding: 8px 10px; border: 2px solid #e67e22; background: white; color: #e67e22; border-radius: 6px; cursor: pointer; font-size: 17px; font-family: sans-serif; width: 100%; text-align: center; line-height: 1.3; }
         .btn.active { background: #e67e22; color: white; }
 
         /* 진폭 계수 버튼 */
-        .btn-amp { padding: 7px 0; border: 2px solid #8e44ad; background: white; color: #8e44ad; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; width: 42px; text-align: center; }
+        .btn-amp { padding: 7px 0; border: 2px solid #8e44ad; background: white; color: #8e44ad; border-radius: 6px; cursor: pointer; font-size: 19px; font-family: sans-serif; width: 52px; text-align: center; }
         .btn-amp.active { background: #8e44ad; color: white; }
 
         /* x의 계수 버튼 */
-        .btn-freq { padding: 7px 0; border: 2px solid #16a085; background: white; color: #16a085; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: sans-serif; width: 42px; text-align: center; }
+        .btn-freq { padding: 7px 0; border: 2px solid #16a085; background: white; color: #16a085; border-radius: 6px; cursor: pointer; font-size: 19px; font-family: sans-serif; width: 52px; text-align: center; }
         .btn-freq.active { background: #16a085; color: white; }
 
         /* 속도 버튼 */
-        .btn-speed { padding: 7px 10px; border: 2px solid #888; background: white; color: #555; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: sans-serif; }
+        .btn-speed { padding: 7px 10px; border: 2px solid #888; background: white; color: #555; border-radius: 6px; cursor: pointer; font-size: 18px; font-family: sans-serif; }
         .btn-speed.active { background: #555; color: white; }
+
+        /* 분수 표현 */
+        .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 0.72em; line-height: 1.1; }
+        .frac .frac-num { border-bottom: 1.5px solid currentColor; padding: 0 3px 1px; text-align: center; }
+        .frac .frac-den { padding: 1px 3px 0; text-align: center; }
 
         /* ── 캔버스 영역 ── */
         .canvas-area {
@@ -104,7 +115,7 @@
     <div class="section-group">
         <div class="section-label">진폭 계수</div>
         <div class="btn-group">
-            <button class="btn-amp"        id="amp-half" onclick="setAmplitude(0.5)">½</button>
+            <button class="btn-amp"        id="amp-half" onclick="setAmplitude(0.5)"><span class="frac"><span class="frac-num">1</span><span class="frac-den">2</span></span></button>
             <button class="btn-amp active" id="amp-1"    onclick="setAmplitude(1)">1</button>
             <button class="btn-amp"        id="amp-2"    onclick="setAmplitude(2)">2</button>
             <button class="btn-amp"        id="amp-3"    onclick="setAmplitude(3)">3</button>
@@ -114,7 +125,7 @@
     <div class="section-group">
         <div class="section-label">x의 계수</div>
         <div class="btn-group">
-            <button class="btn-freq"        id="freq-half" onclick="setFreqCoeff(0.5)">½</button>
+            <button class="btn-freq"        id="freq-half" onclick="setFreqCoeff(0.5)"><span class="frac"><span class="frac-num">1</span><span class="frac-den">2</span></span></button>
             <button class="btn-freq active" id="freq-1"    onclick="setFreqCoeff(1)">1</button>
             <button class="btn-freq"        id="freq-2"    onclick="setFreqCoeff(2)">2</button>
             <button class="btn-freq"        id="freq-3"    onclick="setFreqCoeff(3)">3</button>
@@ -328,12 +339,15 @@ function drawAxes(cfg) {
     ctx.fillText('-' + ampLabel, zeroX - 10, graphOrigin.y + graphAmpPx + 8);
     if (startAngle === 0) ctx.fillText('0', zeroX - 10, graphOrigin.y + 34);
 
+    // x축 ±1: 원 바깥 좌우
     ctx.textAlign = 'left';
-    ctx.fillText('1',  circleCenter.x + radius + 6, circleCenter.y + 9);
+    ctx.fillText('1',  circleCenter.x + radius + 6, circleCenter.y + 34);
     ctx.textAlign = 'right';
-    ctx.fillText('-1', circleCenter.x - radius - 4, circleCenter.y + 9);
-    ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius + 9);
-    ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 9);
+    ctx.fillText('-1', circleCenter.x - radius - 6, circleCenter.y + 34);
+    // y축 ±1: 원 바깥으로
+    ctx.textAlign = 'right';
+    ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius - 8);
+    ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 28);
 
     const totalPiSteps = Math.round((endAngle - startAngle) / Math.PI);
     const firstStep = startAngle < 0 ? 0 : 1;
@@ -357,21 +371,82 @@ function drawAxes(cfg) {
 
 // ── 함수식 표시 ───────────────────────────────────────────
 function drawFormula() {
-    const ampStr  = amplitude === 0.5 ? '½ ' : amplitude === 1 ? '' : amplitude + ' ';
-    const freqStr = freqCoeff === 0.5 ? '½x' : freqCoeff === 1 ? 'x' : freqCoeff + 'x';
-    const formula = `y = ${ampStr}cos ${freqStr}`;
+    const fontSize = 39;
+    const fracSize = Math.round(fontSize * 0.72);
+    const color = '#e67e22';
+    const baseY = 68;
+    const startX = 24;
+    const pad = 14;
 
     ctx.save();
-    ctx.font = 'bold 30px serif';
-    const tw = ctx.measureText(formula).width;
-    const x = 24, y = 56, pad = 12, h = 44;
+
+    function fracWidth(num, den) {
+        ctx.font = `bold ${fracSize}px serif`;
+        return Math.max(ctx.measureText(num).width, ctx.measureText(den).width) + 8;
+    }
+
+    function measureTotal() {
+        let w = 0;
+        ctx.font = `bold ${fontSize}px serif`;
+        w += ctx.measureText('y = ').width;
+        if (amplitude === 0.5)       { w += fracWidth('1','2') + ctx.measureText(' ').width; }
+        else if (amplitude !== 1)    { w += ctx.measureText(amplitude + ' ').width; }
+        w += ctx.measureText('cos ').width;
+        if (freqCoeff === 0.5)       { w += fracWidth('1','2') + ctx.measureText('x').width; }
+        else if (freqCoeff === 1)    { w += ctx.measureText('x').width; }
+        else                         { w += ctx.measureText(freqCoeff + 'x').width; }
+        return w;
+    }
+
+    const tw = measureTotal();
+
     ctx.fillStyle = 'rgba(255,255,255,0.88)';
     ctx.beginPath();
-    ctx.roundRect(x - pad, y - 32, tw + pad * 2, h, 8);
+    ctx.roundRect(startX - pad, baseY - 42, tw + pad * 2, 57, 8);
     ctx.fill();
-    ctx.fillStyle = '#e67e22';
+
+    ctx.fillStyle = color;
+
+    function drawFrac(curX, num, den) {
+        const fw = fracWidth(num, den);
+        const lineY = baseY - Math.round(fontSize * 0.22);
+        ctx.font = `bold ${fracSize}px serif`;
+        ctx.textAlign = 'center';
+        ctx.fillRect(curX, lineY - 1, fw, 1.5);
+        ctx.fillText(num, curX + fw / 2, lineY - 3);
+        ctx.fillText(den, curX + fw / 2, lineY + fracSize + 1);
+        ctx.textAlign = 'left';
+        ctx.font = `bold ${fontSize}px serif`;
+        return fw;
+    }
+
+    let cx = startX;
+    ctx.font = `bold ${fontSize}px serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(formula, x, y);
+
+    ctx.fillText('y = ', cx, baseY);
+    cx += ctx.measureText('y = ').width;
+
+    if (amplitude === 0.5) {
+        cx += drawFrac(cx, '1', '2');
+        cx += ctx.measureText(' ').width;
+    } else if (amplitude !== 1) {
+        ctx.fillText(amplitude + ' ', cx, baseY);
+        cx += ctx.measureText(amplitude + ' ').width;
+    }
+
+    ctx.fillText('cos ', cx, baseY);
+    cx += ctx.measureText('cos ').width;
+
+    if (freqCoeff === 0.5) {
+        cx += drawFrac(cx, '1', '2');
+        ctx.fillText('x', cx, baseY);
+    } else if (freqCoeff === 1) {
+        ctx.fillText('x', cx, baseY);
+    } else {
+        ctx.fillText(freqCoeff + 'x', cx, baseY);
+    }
+
     ctx.restore();
 }
 
@@ -408,18 +483,21 @@ function draw() {
     ctx.moveTo(circleCenter.x, circleCenter.y); ctx.lineTo(px, py);
     ctx.stroke();
 
-    ctx.fillStyle = '#e67e22';
-    ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
-
-    ctx.strokeStyle = 'rgba(230,126,34,0.4)'; ctx.lineWidth = 1.5;
+    // x값 수평선: 점 → y축 (cos = x좌표 시각화)
+    ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 2.5;
     ctx.setLineDash([4, 3]);
     ctx.beginPath();
-    ctx.moveTo(circleCenter.x, circleCenter.y); ctx.lineTo(px, circleCenter.y);
+    ctx.moveTo(px, py);
+    ctx.lineTo(circleCenter.x, py);
     ctx.stroke();
     ctx.setLineDash([]);
 
+    // y축 위 수평선 발점
     ctx.fillStyle = '#e67e22';
-    ctx.beginPath(); ctx.arc(px, circleCenter.y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(circleCenter.x, py, 4, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = '#e67e22';
+    ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
 
     const gx = graphOrigin.x + (angle - startAngle) * radius;
     const gy = graphOrigin.y - amplitude * (px - circleCenter.x);
@@ -428,7 +506,7 @@ function draw() {
 
     ctx.setLineDash([5, 5]);
     ctx.strokeStyle = 'rgba(230,126,34,0.5)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(px, circleCenter.y); ctx.lineTo(gx, gy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(circleCenter.x, py); ctx.lineTo(gx, gy); ctx.stroke();
     ctx.setLineDash([]);
 
     ctx.strokeStyle = '#e67e22'; ctx.lineWidth = 3;
@@ -439,7 +517,7 @@ function draw() {
     const zeroX = graphOrigin.x + (0 - startAngle) * radius;
     ctx.strokeStyle = '#2ed573'; ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(zeroX, graphOrigin.y + 2); ctx.lineTo(gx, graphOrigin.y + 2);
+    ctx.moveTo(graphOrigin.x, graphOrigin.y + 2); ctx.lineTo(gx, graphOrigin.y + 2);
     ctx.stroke();
 
     ctx.fillStyle = '#e67e22';
