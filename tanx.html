@@ -106,7 +106,7 @@
     <div class="section-group">
         <div class="section-label">범위</div>
         <div class="btn-group col">
-            <button class="btn active"  id="btn2pi"    onclick="setMode('2pi')">0 &lt; x &lt; 2π</button>
+            <button class="btn active"  id="btn2pi"    onclick="setMode('2pi')">-<span class="frac"><span class="frac-num">π</span><span class="frac-den">2</span></span> &lt; x &lt; <span class="frac"><span class="frac-num">π</span><span class="frac-den">2</span></span></button>
             <button class="btn"         id="btn4pi"    onclick="setMode('4pi')">0 &lt; x &lt; 4π</button>
             <button class="btn"         id="btnneg2pi" onclick="setMode('neg2pi')">-2π &lt; x &lt; 2π</button>
         </div>
@@ -240,7 +240,7 @@ function getConfig() {
         const cy = canvasHeight / 2;
         return { canvasWidth: 1400, canvasHeight, radius,
             circleCenter: { x: 240, y: cy }, graphOrigin: { x: 530, y: cy },
-            startAngle: 0, endAngle: Math.PI * 2, speed: 0.02 };
+            startAngle: -Math.PI / 2, endAngle: Math.PI / 2, speed: 0.02 };
     } else if (mode === '4pi') {
         const radius = 65;
         const graphAmpPx = amplitude * radius;
@@ -372,24 +372,43 @@ function drawAxes(cfg) {
     ctx.fillText('1',  circleCenter.x - 6, circleCenter.y - radius - 8);
     ctx.fillText('-1', circleCenter.x - 6, circleCenter.y + radius + 28);
 
-    // x축 눈금 (π 단위)
-    const totalPiSteps = Math.round((endAngle - startAngle) / Math.PI);
-    const firstStep = startAngle < 0 ? 0 : 1;
+    // x축 눈금
     ctx.strokeStyle = '#555'; ctx.lineWidth = 1;
-    for (let i = firstStep; i <= totalPiSteps; i++) {
-        const a = startAngle + i * Math.PI;
-        const xMark = graphOrigin.x + i * Math.PI * radius;
-        const piCount = Math.round(a / Math.PI);
-        ctx.beginPath();
-        ctx.moveTo(xMark, graphOrigin.y - 6); ctx.lineTo(xMark, graphOrigin.y + 6);
-        ctx.stroke();
-        let label;
-        if      (piCount === 0)  label = '0';
-        else if (piCount === 1)  label = 'π';
-        else if (piCount === -1) label = '-π';
-        else                     label = piCount + 'π';
-        ctx.textAlign = 'center'; ctx.fillStyle = '#333'; ctx.font = '20px sans-serif';
-        ctx.fillText(label, xMark, graphOrigin.y + 34);
+    if (Math.abs(endAngle - startAngle - Math.PI) < 0.01) {
+        // π/2 눈금 (−π/2 ~ π/2 범위)
+        for (let i = 0; i <= 2; i++) {
+            const a = startAngle + i * (Math.PI / 2);
+            const xMark = graphOrigin.x + (a - startAngle) * radius;
+            const h = Math.round(a * 2 / Math.PI);
+            let label;
+            if (h === 0) label = '0';
+            else if (h === 1) label = 'π/2';
+            else if (h === -1) label = '-π/2';
+            else label = (h / 2) + 'π';
+            ctx.beginPath();
+            ctx.moveTo(xMark, graphOrigin.y - 6); ctx.lineTo(xMark, graphOrigin.y + 6);
+            ctx.stroke();
+            ctx.textAlign = 'center'; ctx.fillStyle = '#333'; ctx.font = '20px sans-serif';
+            ctx.fillText(label, xMark, graphOrigin.y + 34);
+        }
+    } else {
+        const totalPiSteps = Math.round((endAngle - startAngle) / Math.PI);
+        const firstStep = startAngle < 0 ? 0 : 1;
+        for (let i = firstStep; i <= totalPiSteps; i++) {
+            const a = startAngle + i * Math.PI;
+            const xMark = graphOrigin.x + i * Math.PI * radius;
+            const piCount = Math.round(a / Math.PI);
+            ctx.beginPath();
+            ctx.moveTo(xMark, graphOrigin.y - 6); ctx.lineTo(xMark, graphOrigin.y + 6);
+            ctx.stroke();
+            let label;
+            if      (piCount === 0)  label = '0';
+            else if (piCount === 1)  label = 'π';
+            else if (piCount === -1) label = '-π';
+            else                     label = piCount + 'π';
+            ctx.textAlign = 'center'; ctx.fillStyle = '#333'; ctx.font = '20px sans-serif';
+            ctx.fillText(label, xMark, graphOrigin.y + 34);
+        }
     }
 }
 
@@ -613,6 +632,7 @@ function draw() {
 const initCfg = getConfig();
 canvas.width  = initCfg.canvasWidth;
 canvas.height = initCfg.canvasHeight;
+angle = initCfg.startAngle;
 draw();
 </script>
 </body>
